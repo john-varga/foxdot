@@ -1,0 +1,12 @@
+/bin/
+/dist/
+*.exe
+*.dll
+*.dylib
+*.test
+*.out
+.DS_Store
+
+# Local save data if ever pointed at an in-repo directory during dev.
+/saves/*
+!/saves/.gitkeep
