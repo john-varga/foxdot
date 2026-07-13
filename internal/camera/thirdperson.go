@@ -14,7 +14,9 @@ import (
 
 // Settings holds every tunable knob for the third-person camera. It is
 // meant to be embedded into the game's overall config so it can be tweaked
-// without a recompile.
+// without a recompile. Pitch uses degrees: positive looks down at the
+// target, so MinPitchDegrees >= 0 keeps the camera from orbiting under the
+// follow target (and therefore under a flat ground plane).
 type Settings struct {
 	Distance         float32 `json:"distance"`
 	MinDistance      float32 `json:"minDistance"`
@@ -26,22 +28,27 @@ type Settings struct {
 	FollowSmoothTime float32 `json:"followSmoothTime"` // seconds; higher = laggier/smoother follow
 	FOVDegrees       float32 `json:"fovDegrees"`
 	ZoomSpeed        float32 `json:"zoomSpeed"`
+	// MinHeightAboveGround clamps the camera's world Y so it cannot dip
+	// below the follow target's Y by this much (extra guard beyond pitch
+	// limits, useful on uneven ground later).
+	MinHeightAboveGround float32 `json:"minHeightAboveGround"`
 }
 
 // DefaultSettings returns reasonable defaults for a mid-distance third-person
 // camera.
 func DefaultSettings() Settings {
 	return Settings{
-		Distance:         6,
-		MinDistance:      2.5,
-		MaxDistance:      12,
-		HeightOffset:     1.6,
-		ShoulderOffset:   0,
-		MinPitchDegrees:  -35,
-		MaxPitchDegrees:  70,
-		FollowSmoothTime: 0.12,
-		FOVDegrees:       55,
-		ZoomSpeed:        4,
+		Distance:             6,
+		MinDistance:          2.5,
+		MaxDistance:          12,
+		HeightOffset:         1.6,
+		ShoulderOffset:       0,
+		MinPitchDegrees:      8, // slight look-down floor; never orbit underground
+		MaxPitchDegrees:      70,
+		FollowSmoothTime:     0.12,
+		FOVDegrees:           55,
+		ZoomSpeed:            4,
+		MinHeightAboveGround: 0.4,
 	}
 }
 
@@ -115,6 +122,14 @@ func (c *ThirdPerson) Update(dt float32, target rl.Vector3, look input.Vector2, 
 
 	c.position = rl.Vector3Add(rl.Vector3Add(pivot, offset), shoulder)
 	c.lookAt = rl.Vector3Add(pivot, shoulder)
+
+	// Belt-and-suspenders against dipping under the world: even if pitch
+	// limits were retuned aggressively in config, keep the camera above
+	// the follow target by MinHeightAboveGround.
+	minY := c.smoothedTarget.Y + s.MinHeightAboveGround
+	if c.position.Y < minY {
+		c.position.Y = minY
+	}
 }
 
 // followFactor converts a smoothing time constant into a per-frame lerp

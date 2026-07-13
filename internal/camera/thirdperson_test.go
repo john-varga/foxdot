@@ -49,6 +49,23 @@ func TestPitchIsClamped(t *testing.T) {
 	}
 }
 
+func TestCameraStaysAboveFollowTarget(t *testing.T) {
+	settings := DefaultSettings()
+	settings.MinPitchDegrees = -45 // intentionally try to orbit under the target
+	cam := NewThirdPerson(settings)
+	target := rl.Vector3{Y: 0}
+
+	for i := 0; i < 100; i++ {
+		cam.Update(1.0/60.0, target, input.Vector2{Y: -1}, 0)
+	}
+
+	minY := target.Y + settings.MinHeightAboveGround
+	if cam.RLCamera().Position.Y < minY-1e-4 {
+		t.Fatalf("expected camera Y >= %.2f (target + MinHeightAboveGround), got %.2f",
+			minY, cam.RLCamera().Position.Y)
+	}
+}
+
 func TestZoomIsClampedToDistanceRange(t *testing.T) {
 	settings := DefaultSettings()
 	cam := NewThirdPerson(settings)

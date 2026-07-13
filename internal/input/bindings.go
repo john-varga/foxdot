@@ -95,7 +95,7 @@ func DefaultConfig() Config {
 		GamepadIndex:         0,
 		MoveDeadzone:         0.2,
 		LookDeadzone:         0.15,
-		MouseLookSensitivity: 0.15,
+		MouseLookSensitivity: 0.05,
 		StickLookSensitivity: 2.5,
 		InvertY:              false,
 	}

@@ -72,25 +72,35 @@ func TestFoxCannotJumpWhileAirborne(t *testing.T) {
 	}
 }
 
-func TestFoxMovesForwardRelativeToCamera(t *testing.T) {
+func TestFoxMovesForwardAwayFromCamera(t *testing.T) {
 	s := State{Grounded: true}
 	p := DefaultParams()
 	ground := flatGround(0)
 
-	// Camera facing +90 degrees (yaw = pi/2): "forward" should now push the
-	// fox along world +X instead of +Z.
-	cameraYaw := float32(math.Pi / 2)
-	frame := input.Frame{Move: input.Vector2{X: 0, Y: 1}}
+	// At camera yaw 0 the camera sits on +Z looking toward -Z, so W
+	// (forward) should push the fox along -Z — away from the camera.
+	frame := input.Frame{Move: input.Vector2{Y: 1}}
+	for i := 0; i < 30; i++ {
+		Step(&s, p, 1.0/60.0, frame, 0, ground)
+	}
+	if s.Position.Z >= -0.1 {
+		t.Fatalf("expected forward (W) to move away from camera along -Z at yaw 0, got %+v", s.Position)
+	}
+	if math.Abs(float64(s.Position.X)) > 0.1 {
+		t.Fatalf("expected negligible X movement, got %+v", s.Position)
+	}
 
+	// At yaw pi/2 the camera sits on +X looking toward -X; forward → -X.
+	s = State{Grounded: true}
+	cameraYaw := float32(math.Pi / 2)
 	for i := 0; i < 30; i++ {
 		Step(&s, p, 1.0/60.0, frame, cameraYaw, ground)
 	}
-
-	if s.Position.X <= 0.1 {
-		t.Fatalf("expected fox to move along +X when camera yaw is 90deg, got position %+v", s.Position)
+	if s.Position.X >= -0.1 {
+		t.Fatalf("expected forward to move along -X when camera yaw is 90deg, got %+v", s.Position)
 	}
 	if math.Abs(float64(s.Position.Z)) > 0.1 {
-		t.Fatalf("expected negligible Z movement, got position %+v", s.Position)
+		t.Fatalf("expected negligible Z movement, got %+v", s.Position)
 	}
 }
 
@@ -174,7 +184,8 @@ func TestSprintIncreasesDistanceCovered(t *testing.T) {
 		Step(&sprinter, p, 1.0/60.0, sprintFrame, 0, ground)
 	}
 
-	if sprinter.Position.Z <= walker.Position.Z {
+	// Forward at yaw 0 is -Z, so the sprinter's Z should be more negative.
+	if sprinter.Position.Z >= walker.Position.Z {
 		t.Fatalf("expected sprinting fox to cover more ground: walker=%v sprinter=%v",
 			walker.Position.Z, sprinter.Position.Z)
 	}

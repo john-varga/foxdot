@@ -152,10 +152,12 @@ func applyMovement(s *State, p Params, dt float32, in input.Frame, cameraYaw flo
 	sinYaw := float32(math.Sin(float64(cameraYaw)))
 	cosYaw := float32(math.Cos(float64(cameraYaw)))
 
-	// Rotate the input axes (X = strafe, Y = forward) by the camera's yaw
-	// so movement is always relative to where the camera is looking.
-	worldX := move.X*cosYaw + move.Y*sinYaw
-	worldZ := -move.X*sinYaw + move.Y*cosYaw
+	// Camera yaw matches the orbit camera's yaw: at yaw 0 the camera sits on
+	// world +Z looking toward -Z. Input Y = "forward" means away from the
+	// camera (camera look direction); X = strafe right. Same basis as the
+	// camera's horizontal forward/right, not a mirror of it.
+	worldX := move.X*cosYaw - move.Y*sinYaw
+	worldZ := -move.X*sinYaw - move.Y*cosYaw
 
 	s.Position.X += worldX * speed * dt
 	s.Position.Z += worldZ * speed * dt
