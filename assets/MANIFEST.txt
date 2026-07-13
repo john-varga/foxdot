@@ -1,8 +1,68 @@
-Forest Starter Pack Manifest
-============================
+FoxDot Asset Pack Manifest
+==========================
+
+Two bundled packs: visual (models/textures, CC0) and audio (music/ambience/
+sfx, see LICENSE.txt for its distinct terms). audio/manifest.json is a
+separate, structured manifest consumed by internal/audio/catalog.go at
+runtime (durations, BPM, loop flags, ...) — this file is just the flat
+human-readable file listing.
 
 LICENSE.txt
 README.md
+audio/manifest.json
+audio/ambience/loops/birds_loop.wav
+audio/ambience/loops/campfire_loop.wav
+audio/ambience/loops/crickets_loop.wav
+audio/ambience/loops/frogs_loop.wav
+audio/ambience/loops/rain_loop.wav
+audio/ambience/loops/river_loop.wav
+audio/ambience/loops/rustling_leaves_loop.wav
+audio/ambience/loops/wind_loop.wav
+audio/ambience/oneshots/thunder.wav
+audio/music/THEME.md
+audio/music/midi/credits.mid
+audio/music/midi/discovery.mid
+audio/music/midi/forest_day.mid
+audio/music/midi/forest_night.mid
+audio/music/midi/main_menu.mid
+audio/music/midi/quiet_danger.mid
+audio/music/wav/credits.wav
+audio/music/wav/discovery.wav
+audio/music/wav/forest_day.wav
+audio/music/wav/forest_night.wav
+audio/music/wav/main_menu.wav
+audio/music/wav/quiet_danger.wav
+audio/sfx/animals/beetle_buzz.wav
+audio/sfx/animals/bird_chirp_1.wav
+audio/sfx/animals/bird_chirp_2.wav
+audio/sfx/animals/bird_chirp_3.wav
+audio/sfx/animals/butterfly_flutter.wav
+audio/sfx/animals/deer_call.wav
+audio/sfx/animals/fox_bark.wav
+audio/sfx/animals/rabbit_hop.wav
+audio/sfx/footsteps/dirt/dirt_01.wav
+audio/sfx/footsteps/dirt/dirt_02.wav
+audio/sfx/footsteps/dirt/dirt_03.wav
+audio/sfx/footsteps/dirt/dirt_04.wav
+audio/sfx/footsteps/grass/grass_01.wav
+audio/sfx/footsteps/grass/grass_02.wav
+audio/sfx/footsteps/grass/grass_03.wav
+audio/sfx/footsteps/grass/grass_04.wav
+audio/sfx/footsteps/stone/stone_01.wav
+audio/sfx/footsteps/stone/stone_02.wav
+audio/sfx/footsteps/stone/stone_03.wav
+audio/sfx/footsteps/stone/stone_04.wav
+audio/sfx/player/bow_release.wav
+audio/sfx/player/inventory_close.wav
+audio/sfx/player/inventory_open.wav
+audio/sfx/player/item_pickup.wav
+audio/sfx/player/jump.wav
+audio/sfx/player/roll.wav
+audio/sfx/player/tool_swing.wav
+audio/sfx/ui/back.wav
+audio/sfx/ui/click.wav
+audio/sfx/ui/confirm.wav
+audio/sfx/ui/page.wav
 models/animals/beetle.mtl
 models/animals/beetle.obj
 models/animals/bird.mtl

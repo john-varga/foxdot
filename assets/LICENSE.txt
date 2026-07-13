@@ -1,5 +1,30 @@
-CC0 1.0 Universal
+FoxDot Asset Pack Licenses
+==========================
+
+This folder bundles two separately-licensed asset packs. Their terms differ,
+so they're kept distinct below rather than merged into one blanket statement.
+
+Visual assets (models/, textures/)
+-----------------------------------
+CC0 1.0 Universal.
 
 This asset pack is dedicated to the public domain. You may copy, modify,
 distribute, and use the assets, including commercially, without asking
 permission or providing attribution.
+
+Audio assets (audio/)
+----------------------
+ASSET USE NOTICE
+
+These assets were generated specifically for the user in this ChatGPT
+conversation and contain no intentionally included third-party samples.
+
+As between the user and OpenAI, and to the extent permitted by applicable
+law, the user owns the generated output under the OpenAI terms applicable
+to the user's account. Generated output may not be unique, and copyright
+treatment of AI-generated material can vary by jurisdiction.
+
+The user may use, modify, distribute, and include these assets in personal
+and commercial software projects, subject to applicable law and the
+governing OpenAI terms. This notice is informational and is not legal
+advice.
