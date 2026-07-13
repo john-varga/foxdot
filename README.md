@@ -1,11 +1,14 @@
 # FoxDot
 
 A small Go + [raylib](https://www.raylib.com/) game/framework test: control a fox in
-third person around a stylized, low-poly forest clearing — run, jump on things, nibble,
-and playfully swipe. This is scaffolding for a bigger project, so the emphasis so far is
-on a clean, testable foundation rather than content, though a full low-poly art pack
-(fox, forest critters, trees, plants and props — see [Assets](#assets-internalassets))
-is already wired in.
+third person around a stylized, low-poly forest clearing that breathes through a
+day/night cycle — run, jump on things, nibble, and playfully swipe, while ambience and
+music shift with the time of day. This is scaffolding for a bigger project, so the
+emphasis so far is on a clean, testable foundation rather than content, though a full
+low-poly art pack and an original music/ambience/SFX pack (see
+[Assets](#assets-internalassets-and-internalaudio)) are already wired in, and gameplay is
+built as an Entity Component System (see [Architecture](#architecture-internalecs)) rather
+than a class hierarchy.
 
 ## Quick start
 
@@ -50,16 +53,20 @@ All bindings, sensitivities and deadzones are just config values — see below.
 ```
 cmd/foxdot/            Entry point: wires config, input, storage, assets and the game together.
 internal/
+  ecs/                  Minimal Entity Component System core: World, Entity, components, resources, queries.
+  comp/                 Shared component/tag types (Transform, ModelRender, ActionState, ...).
   engine/               Game interface + the raylib window/main-loop runner (App).
   input/                Controller abstraction: Frame, keyboard/mouse + gamepad Sources, Manager.
-  camera/               Third-person orbit camera (pure math, no window dependency).
+  camera/               Third-person orbit camera (pure math, no window dependency); an ECS resource.
+  worldtime/            Pure day/night clock (time of day, phase, sun height); an ECS resource.
   sim/                  Fox movement/jump/action simulation — pure Go, no raylib window state.
   assets/               Catalog + loader for the low-poly art pack under /assets.
-  world/                Forest layout: ground + scattered low-poly props, height queries for collision.
-  game/                 FoxDot scene: composes sim + camera + world + assets + storage into an engine.Game.
-  config/               One JSON-serializable Config struct for window/camera/input/graphics knobs.
+  audio/                Audio catalog, playback engine, ambience mixer, music director, SFX event queue.
+  world/                Forest layout: spawns prop/creature entities, ground plane, height queries.
+  game/                 FoxDot scene: builds the ecs.World and runs its Systems each tick (engine.Game).
+  config/               One JSON-serializable Config struct for window/camera/input/graphics/audio knobs.
   storage/              Cross-platform file layer: JSON save/load, save-game slots, generated-content cache.
-assets/                 Low-poly art pack: OBJ/MTL models + tiny PNG textures (see its own README.md).
+assets/                 Art + audio packs: models/textures (CC0) and music/ambience/SFX (see its own README.md).
 saves/                  Not used at runtime (see File storage) — kept for local experimentation.
 ```
 
@@ -69,12 +76,14 @@ The main design goal called out up front was testability, especially once more
 simulation shows up (procedural generation, creature AI, etc). The pattern used
 throughout:
 
-- **Pure logic packages** (`sim`, `camera`, `world`'s height queries, `input`'s merging,
-  `assets`'s catalog) never call raylib's window/GPU functions — only its plain math types
-  and helpers (`rl.Vector3`, `rl.Vector3Lerp`, ...), which have no side effects. That means
-  they're testable with plain `go test`, no window or GPU required — see each package's
-  `*_test.go`. Only the handful of things that inherently need a live GPU context
-  (`assets.Store`, `world.Forest.Draw`, `game.FoxDot.Draw`) are excluded.
+- **Pure logic packages** (`sim`, `camera`, `worldtime`, `world`'s spawn/height queries,
+  `input`'s merging, `assets`'s catalog, `audio`'s catalog and mix/track *decisions*) never
+  call raylib's window/GPU/audio functions — only its plain math types and helpers
+  (`rl.Vector3`, `rl.Vector3Lerp`, ...), which have no side effects. That means they're
+  testable with plain `go test`, no window, GPU or audio device required — see each
+  package's `*_test.go`. Only the handful of things that inherently need a live GPU/audio
+  context (`assets.Store`, `audio.Engine`, `world.DrawGround`, `game.FoxDot.Draw`) are
+  excluded.
 - **`engine.Game`** separates `Update(dt, input.Frame)` (pure simulation tick) from
   `Draw()` (rendering). `game.FoxDot` follows the same split: its `Init`/`Update`/
   `Shutdown` never touch raylib's drawing API and are unit tested directly; only `Draw`
@@ -87,6 +96,71 @@ Run everything with:
 ```bash
 go test ./...
 ```
+
+## Architecture (`internal/ecs`)
+
+Gameplay is built as an Entity Component System rather than a class hierarchy: the fox,
+every forest prop (tree, rock, bush, ...) and every ambient creature are all just an
+`ecs.Entity` (an opaque ID) plus whichever plain-data components (`internal/comp`) it
+happens to have — there's no `Fox` or `Prop` *object* with its own methods and identity.
+Systems are ordinary functions that operate on a `*ecs.World`:
+
+- `ecs.Set`/`Get`/`Has`/`Remove` attach/query a component type on an entity.
+- `ecs.Each`/`Each2`/`Each3` iterate every entity that has one, two, or three given
+  component types — e.g. `RenderSystem` (`internal/game/systems.go`) draws *every* entity
+  with `(Transform, ModelRender)` the same way, whether it's the fox, a pine tree, or a
+  butterfly.
+- `ecs.SetResource`/`GetResource` hold singleton state that isn't per-entity — the
+  `worldtime.Clock`, the `camera.ThirdPerson` orbit state, and the `audio.EventQueue` all
+  live as resources, read/written by whichever System needs them.
+
+`internal/game/foxdot.go` builds the `ecs.World` (spawning the player entity and the
+forest via `world.SpawnDefaultForest`) and its `Update` just calls each System in order
+(`CameraSystem` → `FoxSystem` → `CreatureVoiceSystem` → audio update). `internal/sim`
+stays a free function (`sim.Step`) operating on plain `sim.State`/`sim.Params` — the same
+pure, unit-tested movement logic as before, just driven by ECS components instead of a
+bespoke `Fox` struct, so any future creature could reuse it with its own components.
+
+## Day/night cycle (`internal/worldtime`)
+
+`worldtime.Clock` is a small, pure resource tracking elapsed time as a fraction of a
+configurable-length day (`DaySeconds`, 6 minutes by default so a full cycle is easy to see
+in a short play session). It derives:
+
+- **`Phase()`** — `Night`/`Dawn`/`Day`/`Dusk`, from configurable dawn/dusk windows.
+- **`SunHeight()`** — a continuous `[-1, 1]` value (for future lighting) so things can fade
+  smoothly instead of snapping at phase boundaries.
+
+`TimeSystem` (folded into `FoxDot.Update`) advances it every tick; `TimeOfDay`/`Day` are
+persisted in saves so reloading resumes at the same time of day instead of always
+restarting at midnight.
+
+## Audio (`internal/audio`)
+
+- **`catalog.go`** (pure, no raylib) parses `assets/audio/manifest.json` into a `Catalog`
+  of `Track`s (music, ambience loops, ambience one-shots, SFX), each already knowing
+  whether it should stream (`Music`, for long/looping audio) or fully decode
+  (`Sound`, for short one-shots).
+- **`engine.go`** (`Engine`, needs a live audio device) lazily loads/caches tracks, plays
+  overlapping SFX via `rl.LoadSoundAlias` so one bark doesn't cut off another, and pumps
+  every playing `Music` stream each frame via `Update`.
+- **`mixer.go`** (`Mixer`) crossfades a set of streamed tracks toward target volume
+  weights — the one piece of fade logic shared by:
+  - **`ambience.go`** (`AmbiencePlayer`) — `AmbienceWeights(phase, campfireProximity)` is a
+    pure decision function (birds by day, crickets/frogs by night, wind/rustling leaves as
+    a year-round bed, campfire crackle fading in with proximity to a `CampfireSource`
+    entity) fed into a `Mixer`.
+  - **`music.go`** (`MusicDirector`) — `ChooseMusicTrack(situation, phase)` picks one track
+    (`forest_day`/`forest_night` while exploring; `main_menu`/`discovery`/`quiet_danger`/
+    `credits` once something sets a different `Situation`) and crossfades to it via the
+    same `Mixer` — playing "just one track" is really just a mix with a single nonzero
+    weight.
+- **`events.go`** (`EventQueue`) decouples "something happened that makes noise" from
+  "how it's played": any System pushes `events.Push("jump", 1)` and an `AudioSystem`-style
+  step (in `FoxDot.updateAudio`) drains the queue into `Engine.PlaySFX` once per frame. The
+  fox's jump/footsteps/swipe, ambient creatures' periodic chirps/hops/calls, and even the
+  quicksave confirmation (`ui_confirm` — standing in for real UI SFX until there's a menu
+  to click) all go through this same path.
 
 ## Controller abstraction (`internal/input`)
 
@@ -105,15 +179,18 @@ Instead:
 Adding a new device later (e.g. a Steam Deck-specific mapping) means adding a new
 `Source`, not touching `sim` or `game`.
 
-## Assets (`internal/assets`)
+## Assets (`internal/assets` and `internal/audio`)
 
-The `/assets` folder is a small low-poly art pack (CC0) covering everything the forest
-scene currently uses: a fox plus six ambient forest critters, four tree species, plants
-(bushes/grass/mushrooms), and props (rocks/log/crate/fence/campfire). Each model is an
-OBJ + MTL pair referencing tiny shared PNG textures — see `assets/README.md` for the pack's
-own notes on scale/orientation/license.
+The `/assets` folder bundles two separately-licensed packs (see `assets/README.md` and
+`assets/LICENSE.txt` for the full breakdown):
 
-`internal/assets` is the bridge between that folder and the engine:
+- A low-poly **visual** pack (CC0): a fox plus six ambient forest critters, four tree
+  species, plants (bushes/grass/mushrooms), and props (rocks/log/crate/fence/campfire).
+  Each model is an OBJ + MTL pair referencing tiny shared PNG textures.
+- An original **audio** pack: music (WAV + editable MIDI), seamless ambience loops, a
+  thunder one-shot, and sound effects (footsteps, player actions, UI, animal calls).
+
+`internal/assets` is the bridge between the visual pack and the engine:
 
 - **`catalog.go`** (pure, no raylib) hardcodes each model's authored bounding box
   (`Width`/`Height`/`Depth`/`MinY`) and a per-model yaw correction, so other packages can
@@ -127,11 +204,12 @@ own notes on scale/orientation/license.
   failed/missing model draws as a small magenta wire cube instead of crashing, so a typo'd
   asset name is obvious rather than fatal.
 
-`world.Forest` places `Prop{AssetName, Position, YawDegrees, Scale}` values and asks the
-catalog for their size (`Prop.Top()`/`Prop.Radius()`) rather than duplicating dimensions;
-`world.NewDefaultForest()` hand-places a few landmark trees/rocks/campsite props and
-scatters bushes/grass/mushrooms around them from a fixed seed (rejection-sampled so
-nothing overlaps) — see `internal/world/generate.go`.
+`internal/world` spawns entities from that catalog rather than duplicating dimensions:
+`world.SpawnDefaultForest` hand-places a few landmark trees/rocks/campsite props, scatters
+bushes/grass/mushrooms around them from a fixed seed (rejection-sampled so nothing
+overlaps — see `internal/world/spawn.go`), and spawns a handful of ambient creatures each
+with a `CreatureVoice` component tied to the audio pack's animal SFX. `world.HeightAt`
+queries every `Prop`-tagged entity's `(Transform, ModelRender)` for collision.
 
 **Orientation note:** the pack's animal models face local +X (confirmed by rendering
 `fox.obj` from above), while the engine treats world +Z as "forward" at yaw 0. The
@@ -141,10 +219,10 @@ catalog's per-model yaw offset (`-90°` for animals) handles this automatically 
 ## Configuration
 
 `internal/config.Config` bundles every tweakable knob — window size/vsync/fps, camera
-distance/FOV/pitch limits/smoothing, all input bindings and sensitivities, and a couple
-of graphics toggles — into one struct that's saved as pretty-printed JSON. On first run
-it's written out with defaults; edit the file and relaunch to retune anything without
-recompiling.
+distance/FOV/pitch limits/smoothing, all input bindings and sensitivities, graphics
+toggles, and per-category audio volumes (master/SFX/music/ambience) — into one struct
+that's saved as pretty-printed JSON. On first run it's written out with defaults; edit the
+file and relaunch to retune anything without recompiling.
 
 ## File storage (`internal/storage`)
 
@@ -161,14 +239,17 @@ procedurally-generated content (`SaveGenerated`/`LoadGenerated`) — useful once
 layout, or anything else, starts being generated rather than hand-placed.
 
 `game.FoxDot` currently uses a single `"autosave"` slot: it loads on `Init` and saves on
-quicksave (Enter/Confirm) and on `Shutdown`.
+quicksave (Enter/Confirm) and on `Shutdown`. Saved state includes the fox's
+position/facing, the camera orbit, playtime, and the world clock's time of day/day count.
 
 ## What's next
 
-- Terrain height (currently a flat plane) feeding into `world.Forest.HeightAt`.
-- Simple animation state driven by `sim.Fox.State.Action`/velocity (the models are static
-  meshes — see `assets/README.md`'s notes on rigging).
-- Ambient wildlife: the catalog already has deer/rabbit/squirrel/bird/butterfly/beetle
-  models, just not wired into the scene yet.
-- A real pause menu (the engine already routes the Pause action to `App`, currently wired
-  to just quit).
+- Terrain height (currently a flat plane) feeding into `world.HeightAt`.
+- Simple animation state driven by an entity's `ActionState`/`Velocity` (the models are
+  static meshes — see `assets/README.md`'s notes on rigging).
+- Real wildlife AI: ambient creatures currently just stand in place and periodically make
+  noise (`comp.CreatureVoice`) rather than wandering.
+- A real pause menu / HUD — `internal/audio` already has UI SFX (`ui_click`, `ui_back`,
+  `ui_page`, ...) loaded and ready via the same `EventQueue` the quicksave confirmation
+  sound uses; there's just nothing to click yet.
+- Lighting/skybox driven by `worldtime.Clock.SunHeight()`, now that day/night is tracked.

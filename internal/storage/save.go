@@ -30,6 +30,13 @@ type SaveGame struct {
 	CameraYaw    float32   `json:"cameraYaw"`
 	CameraPitch  float32   `json:"cameraPitch"`
 	PlaytimeSecs float64   `json:"playtimeSecs"`
+
+	// TimeOfDay is the world clock's fraction of a day in [0, 1) (see
+	// internal/worldtime), and Day is how many full days have elapsed.
+	// Persisted so reloading a save resumes at the same time of day
+	// instead of always restarting at midnight.
+	TimeOfDay float64 `json:"timeOfDay"`
+	Day       int     `json:"day"`
 }
 
 // CurrentSaveVersion should be bumped whenever the SaveGame layout changes in

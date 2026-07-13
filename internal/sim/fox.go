@@ -76,57 +76,63 @@ func DefaultParams() Params {
 // than imported so this package never depends on the world package.
 type GroundHeightFunc func(x, z float32) float32
 
-// Fox is the stateful simulation for the player-controlled fox.
-type Fox struct {
-	State  State
-	Params Params
+// Events reports notable things that happened during a Step, so callers
+// (an ECS system, typically) can react — e.g. queue a jump sound — without
+// this package needing to know sounds exist.
+type Events struct {
+	Jumped      bool
+	Landed      bool
+	ActionStart Action // ActionNone if no action started this Step
 }
 
-// NewFox creates a fox at the origin with the given tuning parameters.
-func NewFox(params Params) *Fox {
-	return &Fox{Params: params}
-}
-
-// Step advances the simulation by dt using this frame's input. cameraYaw
+// Step advances state by dt using this frame's input, in place. cameraYaw
 // rotates movement into camera-relative space (so "forward" always means
 // "away from the camera"), and groundHeight resolves collision against the
 // world's ground/props.
-func (f *Fox) Step(dt float32, in input.Frame, cameraYaw float32, groundHeight GroundHeightFunc) {
+//
+// This is a free function rather than a method on some stateful "Fox"
+// object deliberately: State is plain data meant to live as ECS components
+// (see internal/comp and internal/game), and Step is the system logic that
+// operates on it — there's no per-fox object identity beyond the ECS
+// entity itself, which also means any number of creatures could reuse this
+// same Step with their own State/Params components.
+func Step(s *State, p Params, dt float32, in input.Frame, cameraYaw float32, groundHeight GroundHeightFunc) Events {
 	if dt <= 0 {
-		return
+		return Events{}
 	}
 
-	f.updateAction(dt, in)
-	f.applyMovement(dt, in, cameraYaw)
-	f.applyVerticalMotion(dt, in, groundHeight)
+	var ev Events
+	ev.ActionStart = updateAction(s, p, dt, in)
+	applyMovement(s, p, dt, in, cameraYaw)
+	ev.Jumped, ev.Landed = applyVerticalMotion(s, p, dt, in, groundHeight)
+	return ev
 }
 
-func (f *Fox) updateAction(dt float32, in input.Frame) {
-	s := &f.State
+func updateAction(s *State, p Params, dt float32, in input.Frame) Action {
 	if s.Action != ActionNone {
 		s.ActionTimer -= dt
 		if s.ActionTimer <= 0 {
 			s.Action = ActionNone
 			s.ActionTimer = 0
 		}
-		return
+		return ActionNone
 	}
 	// If both are pressed on the same frame, swipe wins (it's the more
 	// "urgent" reflexive action).
 	switch {
 	case in.Swipe.Pressed:
 		s.Action = ActionSwipe
-		s.ActionTimer = f.Params.SwipeDuration
+		s.ActionTimer = p.SwipeDuration
+		return ActionSwipe
 	case in.Nibble.Pressed:
 		s.Action = ActionNibble
-		s.ActionTimer = f.Params.NibbleDuration
+		s.ActionTimer = p.NibbleDuration
+		return ActionNibble
 	}
+	return ActionNone
 }
 
-func (f *Fox) applyMovement(dt float32, in input.Frame, cameraYaw float32) {
-	p := &f.Params
-	s := &f.State
-
+func applyMovement(s *State, p Params, dt float32, in input.Frame, cameraYaw float32) {
 	// Performing an action roots the fox in place, like a real animal
 	// pausing to nibble or swipe at something.
 	if s.Action != ActionNone {
@@ -158,18 +164,17 @@ func (f *Fox) applyMovement(dt float32, in input.Frame, cameraYaw float32) {
 	s.Yaw = turnTowards(s.Yaw, targetYaw, dt, p.TurnSmoothTime)
 }
 
-func (f *Fox) applyVerticalMotion(dt float32, in input.Frame, groundHeight GroundHeightFunc) {
-	p := &f.Params
-	s := &f.State
-
+func applyVerticalMotion(s *State, p Params, dt float32, in input.Frame, groundHeight GroundHeightFunc) (jumped, landed bool) {
 	ground := float32(0)
 	if groundHeight != nil {
 		ground = groundHeight(s.Position.X, s.Position.Z)
 	}
 
+	wasGrounded := s.Grounded
 	if s.Grounded && in.Jump.Pressed && s.Action == ActionNone {
 		s.Velocity.Y = p.JumpVelocity
 		s.Grounded = false
+		jumped = true
 	}
 
 	s.Velocity.Y -= p.Gravity * dt
@@ -182,6 +187,8 @@ func (f *Fox) applyVerticalMotion(dt float32, in input.Frame, groundHeight Groun
 	} else {
 		s.Grounded = false
 	}
+	landed = s.Grounded && !wasGrounded && !jumped
+	return jumped, landed
 }
 
 // turnTowards smoothly rotates `from` toward `to` (both radians), taking the

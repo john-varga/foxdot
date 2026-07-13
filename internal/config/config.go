@@ -35,12 +35,23 @@ type GraphicsConfig struct {
 	ShowGrid           bool   `json:"showGrid"`
 }
 
+// AudioConfig controls independent volume sliders per internal/audio
+// Category, each in [0, 1] and multiplied together with a track's own
+// per-event volume.
+type AudioConfig struct {
+	MasterVolume   float32 `json:"masterVolume"`
+	SFXVolume      float32 `json:"sfxVolume"`
+	MusicVolume    float32 `json:"musicVolume"`
+	AmbienceVolume float32 `json:"ambienceVolume"`
+}
+
 // Config is the full set of runtime-tweakable settings for the game.
 type Config struct {
 	Window   WindowConfig    `json:"window"`
 	Camera   camera.Settings `json:"camera"`
 	Input    input.Config    `json:"input"`
 	Graphics GraphicsConfig  `json:"graphics"`
+	Audio    AudioConfig     `json:"audio"`
 }
 
 // Default returns the built-in defaults used on first run.
@@ -62,6 +73,12 @@ func Default() Config {
 			BackgroundColorHex: "#8FD3F4",
 			ShowDebugOverlay:   true,
 			ShowGrid:           true,
+		},
+		Audio: AudioConfig{
+			MasterVolume:   1,
+			SFXVolume:      1,
+			MusicVolume:    0.8,
+			AmbienceVolume: 0.8,
 		},
 	}
 }
