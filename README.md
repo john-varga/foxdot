@@ -3,8 +3,9 @@
 A small Go + [raylib](https://www.raylib.com/) game/framework test: control a fox in
 third person around a stylized, low-poly forest clearing — run, jump on things, nibble,
 and playfully swipe. This is scaffolding for a bigger project, so the emphasis so far is
-on a clean, testable foundation rather than content: real art assets, terrain, and more
-gameplay will layer on top of this.
+on a clean, testable foundation rather than content, though a full low-poly art pack
+(fox, forest critters, trees, plants and props — see [Assets](#assets-internalassets))
+is already wired in.
 
 ## Quick start
 
@@ -47,17 +48,18 @@ All bindings, sensitivities and deadzones are just config values — see below.
 ## Project layout
 
 ```
-cmd/foxdot/            Entry point: wires config, input, storage and the game together.
+cmd/foxdot/            Entry point: wires config, input, storage, assets and the game together.
 internal/
   engine/               Game interface + the raylib window/main-loop runner (App).
   input/                Controller abstraction: Frame, keyboard/mouse + gamepad Sources, Manager.
   camera/               Third-person orbit camera (pure math, no window dependency).
   sim/                  Fox movement/jump/action simulation — pure Go, no raylib window state.
-  world/                Placeholder forest: ground + low-poly props, height queries for collision.
-  game/                 FoxDot scene: composes sim + camera + world + storage into an engine.Game.
+  assets/               Catalog + loader for the low-poly art pack under /assets.
+  world/                Forest layout: ground + scattered low-poly props, height queries for collision.
+  game/                 FoxDot scene: composes sim + camera + world + assets + storage into an engine.Game.
   config/               One JSON-serializable Config struct for window/camera/input/graphics knobs.
   storage/              Cross-platform file layer: JSON save/load, save-game slots, generated-content cache.
-assets/                 Placeholder for art (models, textures) once available.
+assets/                 Low-poly art pack: OBJ/MTL models + tiny PNG textures (see its own README.md).
 saves/                  Not used at runtime (see File storage) — kept for local experimentation.
 ```
 
@@ -67,11 +69,12 @@ The main design goal called out up front was testability, especially once more
 simulation shows up (procedural generation, creature AI, etc). The pattern used
 throughout:
 
-- **Pure logic packages** (`sim`, `camera`, `world`'s height queries, `input`'s merging)
-  never call raylib's window/GPU functions — only its plain math types and helpers
-  (`rl.Vector3`, `rl.Vector3Lerp`, ...), which have no side effects. That means they're
-  testable with plain `go test`, no window or GPU required — see each package's
-  `*_test.go`.
+- **Pure logic packages** (`sim`, `camera`, `world`'s height queries, `input`'s merging,
+  `assets`'s catalog) never call raylib's window/GPU functions — only its plain math types
+  and helpers (`rl.Vector3`, `rl.Vector3Lerp`, ...), which have no side effects. That means
+  they're testable with plain `go test`, no window or GPU required — see each package's
+  `*_test.go`. Only the handful of things that inherently need a live GPU context
+  (`assets.Store`, `world.Forest.Draw`, `game.FoxDot.Draw`) are excluded.
 - **`engine.Game`** separates `Update(dt, input.Frame)` (pure simulation tick) from
   `Draw()` (rendering). `game.FoxDot` follows the same split: its `Init`/`Update`/
   `Shutdown` never touch raylib's drawing API and are unit tested directly; only `Draw`
@@ -102,6 +105,39 @@ Instead:
 Adding a new device later (e.g. a Steam Deck-specific mapping) means adding a new
 `Source`, not touching `sim` or `game`.
 
+## Assets (`internal/assets`)
+
+The `/assets` folder is a small low-poly art pack (CC0) covering everything the forest
+scene currently uses: a fox plus six ambient forest critters, four tree species, plants
+(bushes/grass/mushrooms), and props (rocks/log/crate/fence/campfire). Each model is an
+OBJ + MTL pair referencing tiny shared PNG textures — see `assets/README.md` for the pack's
+own notes on scale/orientation/license.
+
+`internal/assets` is the bridge between that folder and the engine:
+
+- **`catalog.go`** (pure, no raylib) hardcodes each model's authored bounding box
+  (`Width`/`Height`/`Depth`/`MinY`) and a per-model yaw correction, so other packages can
+  place and collide with an asset without ever loading it. The catalog is checked against
+  the real files on disk in `catalog_test.go`.
+- **`root.go`** (`FindRoot`) locates the `assets/` folder whether you're running via
+  `go run` from the repo or a packaged binary shipped with its own `assets/` folder next
+  to it (or override with the `FOXDOT_ASSETS_DIR` env var).
+- **`store.go`** (`Store`, needs a live window) lazily loads and caches `rl.Model`s by
+  catalog name and draws them with the right ground offset and yaw correction applied. A
+  failed/missing model draws as a small magenta wire cube instead of crashing, so a typo'd
+  asset name is obvious rather than fatal.
+
+`world.Forest` places `Prop{AssetName, Position, YawDegrees, Scale}` values and asks the
+catalog for their size (`Prop.Top()`/`Prop.Radius()`) rather than duplicating dimensions;
+`world.NewDefaultForest()` hand-places a few landmark trees/rocks/campsite props and
+scatters bushes/grass/mushrooms around them from a fixed seed (rejection-sampled so
+nothing overlaps) — see `internal/world/generate.go`.
+
+**Orientation note:** the pack's animal models face local +X (confirmed by rendering
+`fox.obj` from above), while the engine treats world +Z as "forward" at yaw 0. The
+catalog's per-model yaw offset (`-90°` for animals) handles this automatically in
+`Store.Draw`, so `sim`/`camera`'s yaw math never needs to know about it.
+
 ## Configuration
 
 `internal/config.Config` bundles every tweakable knob — window size/vsync/fps, camera
@@ -129,8 +165,10 @@ quicksave (Enter/Confirm) and on `Shutdown`.
 
 ## What's next
 
-- Swap the placeholder capsule/box primitives for real low-poly fox and forest models.
 - Terrain height (currently a flat plane) feeding into `world.Forest.HeightAt`.
-- Simple animation state driven by `sim.Fox.State.Action`/velocity.
+- Simple animation state driven by `sim.Fox.State.Action`/velocity (the models are static
+  meshes — see `assets/README.md`'s notes on rigging).
+- Ambient wildlife: the catalog already has deer/rabbit/squirrel/bird/butterfly/beetle
+  models, just not wired into the scene yet.
 - A real pause menu (the engine already routes the Pause action to `App`, currently wired
   to just quit).

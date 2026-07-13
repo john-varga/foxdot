@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 
+	"foxdot/internal/assets"
 	"foxdot/internal/config"
 	"foxdot/internal/engine"
 	"foxdot/internal/game"
@@ -34,12 +35,17 @@ func run() error {
 		return fmt.Errorf("load config: %w", err)
 	}
 
+	assetsRoot, err := assets.FindRoot()
+	if err != nil {
+		return fmt.Errorf("find assets: %w", err)
+	}
+
 	inputMgr := input.NewManager(cfg.Input,
 		input.NewKeyboardMouseSource(),
 		input.NewGamepadSource(),
 	)
 
-	scene := game.New(cfg, store)
+	scene := game.New(cfg, store, assetsRoot)
 	app := engine.NewApp(cfg, inputMgr, scene)
 	return app.Run()
 }

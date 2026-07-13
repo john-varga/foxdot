@@ -1,0 +1,35 @@
+newmtl blue
+Ka 0.15 0.15 0.15
+Kd 0.2627 0.4902 0.6667
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/blue.png
+
+newmtl dark_brown
+Ka 0.15 0.15 0.15
+Kd 0.2549 0.1529 0.0863
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/dark_brown.png
+
+newmtl dark_green
+Ka 0.15 0.15 0.15
+Kd 0.1333 0.3294 0.1216
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/dark_green.png
+
+newmtl light_gray
+Ka 0.15 0.15 0.15
+Kd 0.6902 0.7098 0.6980
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/light_gray.png
+
+newmtl yellow
+Ka 0.15 0.15 0.15
+Kd 0.9098 0.7373 0.2118
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/yellow.png
+

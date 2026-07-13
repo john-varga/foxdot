@@ -1,0 +1,21 @@
+newmtl black
+Ka 0.15 0.15 0.15
+Kd 0.0980 0.0941 0.0902
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/black.png
+
+newmtl light_gray
+Ka 0.15 0.15 0.15
+Kd 0.6902 0.7098 0.6980
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/light_gray.png
+
+newmtl white
+Ka 0.15 0.15 0.15
+Kd 0.9608 0.9490 0.9098
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/white.png
+

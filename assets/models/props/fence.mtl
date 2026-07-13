@@ -1,0 +1,14 @@
+newmtl brown
+Ka 0.15 0.15 0.15
+Kd 0.4078 0.2431 0.1216
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/brown.png
+
+newmtl tan
+Ka 0.15 0.15 0.15
+Kd 0.6824 0.4941 0.2863
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/tan.png
+

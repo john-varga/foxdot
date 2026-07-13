@@ -1,0 +1,14 @@
+newmtl cream
+Ka 0.15 0.15 0.15
+Kd 0.9059 0.8667 0.7804
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/cream.png
+
+newmtl red
+Ka 0.15 0.15 0.15
+Kd 0.7451 0.1686 0.1373
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/red.png
+

@@ -1,0 +1,28 @@
+newmtl dark_brown
+Ka 0.15 0.15 0.15
+Kd 0.2549 0.1529 0.0863
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/dark_brown.png
+
+newmtl ember
+Ka 0.15 0.15 0.15
+Kd 1.0000 0.7490 0.1882
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/ember.png
+
+newmtl fire
+Ka 0.15 0.15 0.15
+Kd 0.9569 0.3765 0.1333
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/fire.png
+
+newmtl stone
+Ka 0.15 0.15 0.15
+Kd 0.4510 0.4588 0.4392
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/stone.png
+

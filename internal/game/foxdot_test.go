@@ -13,10 +13,14 @@ import (
 // which is exactly the split engine.Game is designed to make unnecessary
 // for testing gameplay logic.
 
+// testAssetsRoot points at the repo's real assets/ directory. Tests run
+// with cwd set to this package's directory (internal/game).
+const testAssetsRoot = "../../assets"
+
 func newTestGame(t *testing.T) (*FoxDot, *storage.Store) {
 	t.Helper()
 	store := storage.New(t.TempDir())
-	g := New(config.Default(), store)
+	g := New(config.Default(), store, testAssetsRoot)
 	if err := g.Init(); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
@@ -71,7 +75,7 @@ func TestQuicksaveAndReloadRoundTrips(t *testing.T) {
 
 	// A fresh game instance loading from the same store should resume at
 	// the saved position.
-	g2 := New(config.Default(), store)
+	g2 := New(config.Default(), store, testAssetsRoot)
 	if err := g2.Init(); err != nil {
 		t.Fatalf("Init on reload: %v", err)
 	}

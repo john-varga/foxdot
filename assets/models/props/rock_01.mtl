@@ -1,0 +1,7 @@
+newmtl stone
+Ka 0.15 0.15 0.15
+Kd 0.4510 0.4588 0.4392
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/stone.png
+

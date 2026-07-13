@@ -1,8 +1,8 @@
 // Package game implements the FoxDot demo scene itself: a fox that can run,
-// jump, nibble and swipe around a small placeholder forest, viewed through
-// a third-person orbit camera. It implements engine.Game by composing the
-// (independently testable) sim, camera, world and storage packages — this
-// file is mostly wiring plus rendering.
+// jump, nibble and swipe around a small low-poly forest clearing, viewed
+// through a third-person orbit camera. It implements engine.Game by
+// composing the (independently testable) sim, camera, world, assets and
+// storage packages — this file is mostly wiring plus rendering.
 package game
 
 import (
@@ -12,6 +12,7 @@ import (
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 
+	"foxdot/internal/assets"
 	"foxdot/internal/camera"
 	"foxdot/internal/config"
 	"foxdot/internal/input"
@@ -30,6 +31,7 @@ const autosaveSlot = "autosave"
 type FoxDot struct {
 	cfg   config.Config
 	store *storage.Store
+	art   *assets.Store
 
 	fox    *sim.Fox
 	cam    *camera.ThirdPerson
@@ -38,15 +40,17 @@ type FoxDot struct {
 	playtimeSecs float64
 }
 
-// New constructs the scene. Nothing touches raylib until Init/Update/Draw
-// are called, so New itself is cheap and side-effect free.
-func New(cfg config.Config, store *storage.Store) *FoxDot {
+// New constructs the scene. assetsRoot should come from assets.FindRoot().
+// Nothing touches raylib until Init/Update/Draw are called, so New itself
+// is cheap and side-effect free.
+func New(cfg config.Config, store *storage.Store, assetsRoot string) *FoxDot {
 	return &FoxDot{
 		cfg:    cfg,
 		store:  store,
+		art:    assets.NewStore(assetsRoot),
 		fox:    sim.NewFox(sim.DefaultParams()),
 		cam:    camera.NewThirdPerson(cfg.Camera),
-		forest: world.NewPlaceholderForest(),
+		forest: world.NewDefaultForest(),
 	}
 }
 
@@ -85,11 +89,15 @@ func (g *FoxDot) Update(dt float32, in input.Frame) error {
 	return nil
 }
 
-// Draw renders the forest, the fox (as low-poly primitives standing in for
-// real art), and an optional debug overlay.
+// fox scales the (real-world-ish sized) fox model down a bit so it reads as
+// a small, nimble forest critter next to the trees/rocks rather than
+// something deer-sized.
+const foxModelScale = 0.55
+
+// Draw renders the forest, the fox, and an optional debug overlay.
 func (g *FoxDot) Draw() {
 	rl.BeginMode3D(g.cam.RLCamera())
-	g.forest.Draw(g.cfg.Graphics.ShowGrid)
+	g.forest.Draw(g.art, g.cfg.Graphics.ShowGrid)
 	g.drawFox()
 	rl.EndMode3D()
 
@@ -100,30 +108,24 @@ func (g *FoxDot) Draw() {
 
 func (g *FoxDot) drawFox() {
 	pos := g.fox.State.Position
+	_ = g.art.Draw("fox", pos, g.fox.State.Yaw, foxModelScale)
 
-	bottom := rl.Vector3{X: pos.X, Y: pos.Y + 0.18, Z: pos.Z}
-	top := rl.Vector3{X: pos.X, Y: pos.Y + 0.5, Z: pos.Z}
-	bodyColor := rl.Color{R: 237, G: 127, B: 51, A: 255} // fox-orange
-	rl.DrawCapsule(bottom, top, 0.28, 8, 8, bodyColor)
-	rl.DrawCapsuleWires(bottom, top, 0.28, 8, 8, rl.Color{R: 90, G: 40, B: 10, A: 255})
-
-	// A small nose marker shows facing direction at a glance, since we have
-	// no real head mesh yet.
+	// A small marker above the fox's head shows the current action at a
+	// glance (handy during development, before there's real animation).
+	if g.fox.State.Action == sim.ActionNone {
+		return
+	}
+	markerColor := rl.Yellow
+	if g.fox.State.Action == sim.ActionSwipe {
+		markerColor = rl.Red
+	}
 	facing := rl.Vector3{
 		X: float32(math.Sin(float64(g.fox.State.Yaw))),
 		Y: 0,
 		Z: float32(math.Cos(float64(g.fox.State.Yaw))),
 	}
-	nose := rl.Vector3Add(rl.Vector3{X: pos.X, Y: pos.Y + 0.42, Z: pos.Z}, rl.Vector3Scale(facing, 0.32))
-
-	noseColor := rl.White
-	switch g.fox.State.Action {
-	case sim.ActionNibble:
-		noseColor = rl.Yellow
-	case sim.ActionSwipe:
-		noseColor = rl.Red
-	}
-	rl.DrawSphere(nose, 0.1, noseColor)
+	marker := rl.Vector3Add(rl.Vector3{X: pos.X, Y: pos.Y + 0.75, Z: pos.Z}, rl.Vector3Scale(facing, 0.4))
+	rl.DrawSphere(marker, 0.08, markerColor)
 }
 
 func (g *FoxDot) drawDebugOverlay() {
@@ -142,10 +144,11 @@ func (g *FoxDot) drawDebugOverlay() {
 	}
 }
 
-// Shutdown autosaves on the way out so quitting normally never loses
-// progress.
+// Shutdown autosaves and releases loaded models on the way out so quitting
+// normally never loses progress or leaks GPU resources.
 func (g *FoxDot) Shutdown() {
 	_ = g.save(autosaveSlot)
+	g.art.Unload()
 }
 
 func (g *FoxDot) save(slot string) error {

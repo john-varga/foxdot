@@ -1,0 +1,21 @@
+newmtl black
+Ka 0.15 0.15 0.15
+Kd 0.0980 0.0941 0.0902
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/black.png
+
+newmtl dark_brown
+Ka 0.15 0.15 0.15
+Kd 0.2549 0.1529 0.0863
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/dark_brown.png
+
+newmtl deer
+Ka 0.15 0.15 0.15
+Kd 0.6157 0.4039 0.2314
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/deer.png
+

@@ -1,0 +1,21 @@
+newmtl black
+Ka 0.15 0.15 0.15
+Kd 0.0980 0.0941 0.0902
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/black.png
+
+newmtl pink
+Ka 0.15 0.15 0.15
+Kd 0.8627 0.4667 0.5804
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/pink.png
+
+newmtl purple
+Ka 0.15 0.15 0.15
+Kd 0.4941 0.3137 0.5961
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/purple.png
+

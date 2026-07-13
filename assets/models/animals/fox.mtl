@@ -1,0 +1,28 @@
+newmtl black
+Ka 0.15 0.15 0.15
+Kd 0.0980 0.0941 0.0902
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/black.png
+
+newmtl cream
+Ka 0.15 0.15 0.15
+Kd 0.9059 0.8667 0.7804
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/cream.png
+
+newmtl fox_dark
+Ka 0.15 0.15 0.15
+Kd 0.1765 0.1216 0.0941
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/fox_dark.png
+
+newmtl fox_orange
+Ka 0.15 0.15 0.15
+Kd 0.8627 0.3569 0.1098
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/fox_orange.png
+

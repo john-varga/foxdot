@@ -1,60 +1,70 @@
-// Package world holds the (currently placeholder) forest the fox runs
-// around in: a flat ground plane plus a handful of simple low-poly props
-// (stand-ins for rocks, stumps and logs) that double as things to jump on.
+// Package world holds the forest the fox runs around in: a flat ground
+// plane plus a scattered layout of low-poly props from the asset pack
+// (trees, rocks, logs, bushes, ...) that double as things to jump on.
 // Collision/height-query logic is plain data manipulation so it's testable
 // without raylib; only Draw touches the renderer.
 package world
 
 import (
-	"fmt"
-
 	rl "github.com/gen2brain/raylib-go/raylib"
+
+	"foxdot/internal/assets"
 )
 
-// Prop is a simple box-shaped obstacle/platform. Real meshes will replace
-// these once art assets land; for now they double as jumpable "furniture"
-// for the forest.
+// Prop places one catalog asset (see internal/assets) in the world. Props
+// have no mesh data of their own — Position/YawDegrees/Scale plus a lookup
+// into the asset catalog is all that's needed for both collision and
+// drawing.
 type Prop struct {
-	Name     string
-	Position rl.Vector3 // center of the base (Y = bottom of the box)
-	Size     rl.Vector3 // width (X), height (Y), depth (Z)
-	Color    rl.Color
+	AssetName  string
+	Position   rl.Vector3 // ground-contact point (Y is normally the forest's GroundY)
+	YawDegrees float32
+	Scale      float32 // <= 0 means "use 1"
 }
 
-// Top returns the height of the prop's top surface.
+func (p Prop) effectiveScale() float32 {
+	if p.Scale <= 0 {
+		return 1
+	}
+	return p.Scale
+}
+
+// Top returns the height of the prop's top surface, or its base position if
+// its asset name isn't in the catalog (defensive default, so a typo'd name
+// degrades to "flat ground" instead of breaking collision entirely).
 func (p Prop) Top() float32 {
-	return p.Position.Y + p.Size.Y
+	meta, ok := assets.ByName(p.AssetName)
+	if !ok {
+		return p.Position.Y
+	}
+	return p.Position.Y + meta.Height*p.effectiveScale()
+}
+
+// Radius returns the prop's collision radius: a circle sized to the widest
+// horizontal extent of its model. Circular (rather than a rotated
+// rectangle) so props can be scattered with a random yaw for visual variety
+// without complicating collision.
+func (p Prop) Radius() float32 {
+	meta, ok := assets.ByName(p.AssetName)
+	if !ok {
+		return 0
+	}
+	return meta.Footprint() * p.effectiveScale()
 }
 
 // Contains reports whether the world-space point (x, z) falls within the
 // prop's footprint.
 func (p Prop) Contains(x, z float32) bool {
-	halfX := p.Size.X / 2
-	halfZ := p.Size.Z / 2
-	return x >= p.Position.X-halfX && x <= p.Position.X+halfX &&
-		z >= p.Position.Z-halfZ && z <= p.Position.Z+halfZ
+	dx := x - p.Position.X
+	dz := z - p.Position.Z
+	r := p.Radius()
+	return dx*dx+dz*dz <= r*r
 }
 
-// Forest is the whole (currently tiny and placeholder) playable area.
+// Forest is the whole playable clearing.
 type Forest struct {
 	GroundY float32
 	Props   []Prop
-}
-
-// NewPlaceholderForest builds a small clearing with a few props scattered
-// around so there's immediately something to run around and jump on, ahead
-// of real assets landing.
-func NewPlaceholderForest() *Forest {
-	return &Forest{
-		GroundY: 0,
-		Props: []Prop{
-			{Name: "stump-1", Position: rl.Vector3{X: 3, Y: 0, Z: 2}, Size: rl.Vector3{X: 1.2, Y: 0.6, Z: 1.2}, Color: rl.Color{R: 121, G: 85, B: 61, A: 255}},
-			{Name: "rock-1", Position: rl.Vector3{X: -4, Y: 0, Z: 3}, Size: rl.Vector3{X: 1.6, Y: 1.0, Z: 1.4}, Color: rl.Color{R: 130, G: 130, B: 130, A: 255}},
-			{Name: "log-1", Position: rl.Vector3{X: -2, Y: 0, Z: -4}, Size: rl.Vector3{X: 2.4, Y: 0.5, Z: 0.6}, Color: rl.Color{R: 101, G: 67, B: 33, A: 255}},
-			{Name: "rock-2", Position: rl.Vector3{X: 5, Y: 0, Z: -3}, Size: rl.Vector3{X: 1.0, Y: 1.8, Z: 1.0}, Color: rl.Color{R: 110, G: 110, B: 110, A: 255}},
-			{Name: "stump-2", Position: rl.Vector3{X: 0, Y: 0, Z: 6}, Size: rl.Vector3{X: 1.0, Y: 1.2, Z: 1.0}, Color: rl.Color{R: 121, G: 85, B: 61, A: 255}},
-		},
-	}
 }
 
 // HeightAt returns the height of the highest walkable surface (ground or a
@@ -81,8 +91,4 @@ func (w *Forest) PropAt(x, z float32) (Prop, bool) {
 		}
 	}
 	return Prop{}, false
-}
-
-func (w *Forest) String() string {
-	return fmt.Sprintf("Forest{groundY=%.2f, props=%d}", w.GroundY, len(w.Props))
 }

@@ -1,0 +1,14 @@
+newmtl green
+Ka 0.15 0.15 0.15
+Kd 0.2588 0.4784 0.1647
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/green.png
+
+newmtl yellow
+Ka 0.15 0.15 0.15
+Kd 0.9098 0.7373 0.2118
+Ks 0.0 0.0 0.0
+illum 1
+map_Kd ../../textures/yellow.png
+
